@@ -3,18 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyclops Mentalscape - Void Orb</title>
+    <title>Cyclops Mentalscape - Debug</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* Custom CSS for the canvas to ensure it fills its container */
-        canvas {
-            display: block;
-            width: 100%;
-            height: 100%;
-            border-radius: 0.75rem; /* rounded-lg */
-        }
-        /* Ensure the body takes full height and uses Inter font */
+        /* IMPORTANT DEBUGGING: Bright red background to confirm HTML/CSS loading */
         body {
+            background-color: #FF0000; /* BRIGHT RED FOR DEBUGGING */
             font-family: 'Inter', sans-serif;
             min-height: 100vh;
             margin: 0;
@@ -22,17 +16,23 @@
             flex-direction: column;
             justify-content: center;
             align-items: center;
-            background-color: #1a202c; /* bg-gray-900 */
             color: #e2e8f0; /* text-gray-200 */
             padding: 1rem; /* p-4 */
             overflow: hidden; /* Prevent scrollbars due to canvas sizing */
+        }
+        /* Custom CSS for the canvas to ensure it fills its container */
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            border-radius: 0.75rem; /* rounded-lg */
         }
         /* Container for the canvas to give it a defined aspect ratio on larger screens */
         .canvas-container {
             width: 100%;
             max-width: 960px; /* md:max-w-3xl, lg:max-w-4xl */
             aspect-ratio: 16 / 9; /* Maintain a widescreen aspect ratio */
-            background-color: #2d3748; /* bg-gray-800 */
+            background-color: #2d3748; /* bg-gray-800 - should be visible if canvas fails */
             border-radius: 0.75rem; /* rounded-lg */
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-xl */
             margin-bottom: 1rem; /* mb-4 */
@@ -128,7 +128,7 @@
         }
     </style>
 </head>
-<body class="bg-gray-900 text-gray-200 flex flex-col items-center justify-center p-4">
+<body class="bg-red-500 text-gray-200 flex flex-col items-center justify-center p-4">
 
     <h1 class="text-3xl md:text-4xl font-bold mb-6 text-center">The Mind of the Cyclops</h1>
 
@@ -158,12 +158,15 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
 
     <script>
+        // Add this at the very top of the script block to see if the script even starts
+        console.log("Script block started.");
+
         // Global variables for Three.js scenes, camera, renderer, and controls
         let renderer, camera, controls;
-        let cyclopsScene, voidScene, mentalscapeScene; // Added voidScene
+        let cyclopsScene, voidScene, mentalscapeScene;
         let activeScene; // To switch between scenes
         let cyclopsEyeMesh, pokeOrbMesh; // Reference to the eye mesh and void orb
-        let introOverlay, enterButton, pokeOrbTextOverlay; // Updated button/overlay references
+        let introOverlay, enterButton, pokeOrbTextOverlay;
         let backgroundAudio;
 
         const CANVAS_ID = 'mentalscapeCanvas';
@@ -172,53 +175,55 @@
          * Initializes the Three.js renderer and common elements.
          */
         function initRenderer() {
+            console.log("initRenderer: Attempting to initialize renderer.");
             const canvas = document.getElementById(CANVAS_ID);
+            if (!canvas) {
+                console.error("initRenderer: Canvas element not found!");
+                showMessageBox("Critical Error: Canvas element missing. Cannot render 3D scene.");
+                throw new Error("Canvas not found"); // Halt execution
+            }
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
             renderer.setSize(canvas.clientWidth, canvas.clientHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true; // Enable shadows for more realism
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            console.log("initRenderer: Renderer initialized successfully.");
         }
 
         /**
          * Creates and sets up the Cyclops Eye intro scene.
          */
         function createCyclopsScene() {
+            console.log("createCyclopsScene: Creating cyclops scene.");
             cyclopsScene = new THREE.Scene();
-            cyclopsScene.background = new THREE.Color(0x000000); // Dark background for contrast
+            cyclopsScene.background = new THREE.Color(0x000000);
 
-            // Camera for the cyclops scene
             camera = new THREE.PerspectiveCamera(
                 75,
                 document.getElementById(CANVAS_ID).clientWidth / document.getElementById(CANVAS_ID).clientHeight,
                 0.1,
                 1000
             );
-            camera.position.set(0, 0, 10); // Initial position to view the cyclops head
+            camera.position.set(0, 0, 10);
 
-            // Ambient light for general illumination
             const ambientLight = new THREE.AmbientLight(0x404040, 3);
             cyclopsScene.add(ambientLight);
 
-            // Point light to highlight the eye
             const pointLight = new THREE.PointLight(0xffffff, 2, 50);
             pointLight.position.set(0, 0, 5);
             pointLight.castShadow = true;
             cyclopsScene.add(pointLight);
 
-            // Cyclops Head (large sphere)
             const headGeometry = new THREE.SphereGeometry(5, 32, 32);
-            const headMaterial = new THREE.MeshStandardMaterial({ color: 0x4B0082, roughness: 0.7, metalness: 0.1 }); // Indigo
+            const headMaterial = new THREE.MeshStandardMaterial({ color: 0x4B0082, roughness: 0.7, metalness: 0.1 });
             const headMesh = new THREE.Mesh(headGeometry, headMaterial);
             headMesh.receiveShadow = true;
             cyclopsScene.add(headMesh);
 
-            // Cyclops Eye (smaller, glowing sphere)
             const eyeGeometry = new THREE.SphereGeometry(1.5, 32, 32);
-            // Ethereal, glowing eye material
             const eyeMaterial = new THREE.MeshStandardMaterial({
-                color: 0x00FFFF, // Cyan
-                emissive: 0x00FFFF, // Emits light
+                color: 0x00FFFF,
+                emissive: 0x00FFFF,
                 emissiveIntensity: 1.5,
                 roughness: 0.1,
                 metalness: 0.9,
@@ -226,11 +231,10 @@
                 opacity: 0.8
             });
             cyclopsEyeMesh = new THREE.Mesh(eyeGeometry, eyeMaterial);
-            cyclopsEyeMesh.position.set(0, 0, 4.5); // Position slightly forward from the head
+            cyclopsEyeMesh.position.set(0, 0, 4.5);
             cyclopsEyeMesh.castShadow = true;
             cyclopsScene.add(cyclopsEyeMesh);
 
-            // Add a subtle rotation animation to the eye
             gsap.to(cyclopsEyeMesh.rotation, {
                 y: Math.PI * 2,
                 duration: 20,
@@ -238,26 +242,25 @@
                 ease: "none"
             });
 
-            // Set the active scene to the cyclops scene initially
             activeScene = cyclopsScene;
+            console.log("createCyclopsScene: Cyclops scene created successfully, activeScene set.");
         }
 
         /**
          * Creates and sets up the dark void scene with the "Poke Me Adlay" orb.
          */
         function createVoidScene() {
+            console.log("createVoidScene: Creating void scene.");
             voidScene = new THREE.Scene();
-            voidScene.background = new THREE.Color(0x000000); // Pure black void
+            voidScene.background = new THREE.Color(0x000000);
 
-            // Ambient light for the orb
             const ambientLight = new THREE.AmbientLight(0x404040, 1);
             voidScene.add(ambientLight);
 
-            // Orb for "Poke Me Adlay"
             const orbGeometry = new THREE.SphereGeometry(3, 32, 32);
             const orbMaterial = new THREE.MeshStandardMaterial({
-                color: 0xFF00FF, // Magenta
-                emissive: 0xFF00FF, // Emits light
+                color: 0xFF00FF,
+                emissive: 0xFF00FF,
                 emissiveIntensity: 1.2,
                 roughness: 0.1,
                 metalness: 0.9,
@@ -265,10 +268,9 @@
                 opacity: 0.7
             });
             pokeOrbMesh = new THREE.Mesh(orbGeometry, orbMaterial);
-            pokeOrbMesh.position.set(0, 0, 0); // Center of the void
+            pokeOrbMesh.position.set(0, 0, 0);
             voidScene.add(pokeOrbMesh);
 
-            // Animate subtle floating and rotation for the orb
             gsap.to(pokeOrbMesh.rotation, {
                 y: Math.PI * 2,
                 duration: 15,
@@ -276,45 +278,44 @@
                 ease: "none"
             });
             gsap.to(pokeOrbMesh.position, {
-                y: 0.5, // Small float up and down
+                y: 0.5,
                 duration: 3,
                 yoyo: true,
                 repeat: -1,
                 ease: "sine.inOut"
             });
+            console.log("createVoidScene: Void scene created successfully.");
         }
 
         /**
          * Creates and sets up the Mentalscape scene (expanded version).
          */
         function createMentalscapeScene() {
+            console.log("createMentalscapeScene: Creating mentalscape scene.");
             mentalscapeScene = new THREE.Scene();
-            mentalscapeScene.background = new THREE.Color(0x0a0a2a); // Deep blue/purple background
+            mentalscapeScene.background = new THREE.Color(0x0a0a2a);
 
-            // Ambient light for overall mystical glow
             const ambientLight = new THREE.AmbientLight(0x404040, 1);
             mentalscapeScene.add(ambientLight);
 
-            // Multiple colored point lights for ethereal effects
-            const light1 = new THREE.PointLight(0xff00ff, 2, 200); // Magenta
+            const light1 = new THREE.PointLight(0xff00ff, 2, 200);
             light1.position.set(50, 20, 50);
             light1.castShadow = true;
             mentalscapeScene.add(light1);
 
-            const light2 = new THREE.PointLight(0x00ffff, 2, 200); // Cyan
+            const light2 = new THREE.PointLight(0x00ffff, 2, 200);
             light2.position.set(-50, 30, -50);
             light2.castShadow = true;
             mentalscapeScene.add(light2);
 
-            const light3 = new THREE.PointLight(0xffff00, 1.5, 200); // Yellow
+            const light3 = new THREE.PointLight(0xffff00, 1.5, 200);
             light3.position.set(0, -20, 80);
             light3.castShadow = true;
             mentalscapeScene.add(light3);
 
-            // Ground/Floor (abstract, perhaps reflective)
-            const groundGeometry = new THREE.PlaneGeometry(200, 200); // Larger ground
+            const groundGeometry = new THREE.PlaneGeometry(200, 200);
             const groundMaterial = new THREE.MeshStandardMaterial({
-                color: 0x1a0033, // Dark purplish
+                color: 0x1a0033,
                 roughness: 0.2,
                 metalness: 0.8,
                 transparent: true,
@@ -322,70 +323,57 @@
             });
             const ground = new THREE.Mesh(groundGeometry, groundMaterial);
             ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -20; // Lower ground
+            ground.position.y = -20;
             ground.receiveShadow = true;
             mentalscapeScene.add(ground);
 
-            // --- Ethereal and Magical Objects ---
             const etherealMaterials = [
-                new THREE.MeshPhysicalMaterial({ color: 0x8A2BE2, transparent: true, opacity: 0.6, roughness: 0.1, metalness: 0.5, reflectivity: 0.9, clearcoat: 1 }), // BlueViolet
-                new THREE.MeshStandardMaterial({ color: 0x00FF00, emissive: 0x00FF00, emissiveIntensity: 0.8, roughness: 0.3 }), // Glowing Green
-                new THREE.MeshStandardMaterial({ color: 0xFFD700, roughness: 0.2, metalness: 0.9 }), // Gold
-                new THREE.MeshPhysicalMaterial({ color: 0xFF69B4, transparent: true, opacity: 0.7, roughness: 0.3, metalness: 0.2 }), // HotPink
-                new THREE.MeshStandardMaterial({ color: 0x4682B4, roughness: 0.6, metalness: 0.3 }) // SteelBlue
+                new THREE.MeshPhysicalMaterial({ color: 0x8A2BE2, transparent: true, opacity: 0.6, roughness: 0.1, metalness: 0.5, reflectivity: 0.9, clearcoat: 1 }),
+                new THREE.MeshStandardMaterial({ color: 0x00FF00, emissive: 0x00FF00, emissiveIntensity: 0.8, roughness: 0.3 }),
+                new THREE.MeshStandardMaterial({ color: 0xFFD700, roughness: 0.2, metalness: 0.9 }),
+                new THREE.MeshPhysicalMaterial({ color: 0xFF69B4, transparent: true, opacity: 0.7, roughness: 0.3, metalness: 0.2 }),
+                new THREE.MeshStandardMaterial({ color: 0x4682B4, roughness: 0.6, metalness: 0.3 })
             ];
 
-            const wizardlyColors = [0x9932CC, 0x4B0082, 0x8B0000, 0x006400, 0x800080]; // Darker, richer colors
-
             const objectTypes = [
-                // General mystical shapes
                 { type: 'sphere', size: [1, 5], material: etherealMaterials },
                 { type: 'torus', size: [1, 4, 0.2, 1], material: etherealMaterials },
                 { type: 'cone', size: [1, 5, 1, 5], material: etherealMaterials },
                 { type: 'dodecahedron', size: [1, 4], material: etherealMaterials },
                 { type: 'icosahedron', size: [1, 4], material: etherealMaterials },
                 { type: 'torusknot', size: [1, 3, 100, 16], material: etherealMaterials },
-
-                // Wizardly things: Scrolls (flat cylinders/boxes)
-                { type: 'scroll', material: new THREE.MeshStandardMaterial({ color: 0xF5DEB3, roughness: 0.8, metalness: 0.1 }) }, // Wheat color
-                { type: 'scroll', material: new THREE.MeshStandardMaterial({ color: 0xD2B48C, roughness: 0.8, metalness: 0.1 }) }, // Tan color
-
-                // Wizardly things: Potions (cylinder with sphere top)
-                { type: 'potion', color: 0x00CED1, emissive: 0x008B8B, emissiveIntensity: 0.5 }, // DarkTurquoise
-                { type: 'potion', color: 0x8B008B, emissive: 0x4B0082, emissiveIntensity: 0.5 }, // DarkMagenta
-                { type: 'potion', color: 0xDAA520, emissive: 0xB8860B, emissiveIntensity: 0.5 }, // Goldenrod
-
-                // Floating Heads (simple spheres)
-                { type: 'head', color: 0x800000, emissive: 0xFF0000, emissiveIntensity: 0.3 }, // Maroon with red red glow
-                { type: 'head', color: 0x008000, emissive: 0x00FF00, emissiveIntensity: 0.3 }, // DarkGreen with green glow
-                { type: 'head', color: 0x483D8B, emissive: 0x6A5ACD, emissiveIntensity: 0.3 } // DarkSlateBlue with lavender glow
+                { type: 'scroll', material: new THREE.MeshStandardMaterial({ color: 0xF5DEB3, roughness: 0.8, metalness: 0.1 }) },
+                { type: 'scroll', material: new THREE.MeshStandardMaterial({ color: 0xD2B48C, roughness: 0.8, metalness: 0.1 }) },
+                { type: 'potion', color: 0x00CED1, emissive: 0x008B8B, emissiveIntensity: 0.5 },
+                { type: 'potion', color: 0x8B008B, emissive: 0x4B0082, emissiveIntensity: 0.5 },
+                { type: 'potion', color: 0xDAA520, emissive: 0xB8860B, emissiveIntensity: 0.5 },
+                { type: 'head', color: 0x800000, emissive: 0xFF0000, emissiveIntensity: 0.3 },
+                { type: 'head', color: 0x008000, emissive: 0x00FF00, emissiveIntensity: 0.3 },
+                { type: 'head', color: 0x483D8B, emissive: 0x6A5ACD, emissiveIntensity: 0.3 }
             ];
 
-            const spawnRange = 150; // Increased spawn range for objects
+            const spawnRange = 150;
 
-            // Function to create and add a magical object
             function addMagicalObject() {
                 const objConfig = objectTypes[Math.floor(Math.random() * objectTypes.length)];
                 let geometry;
                 let material;
-                let mesh; // Declare mesh here to be accessible for animations
+                let mesh;
 
-                // Random position within the larger range
                 const x = (Math.random() - 0.5) * spawnRange * 2;
-                const y = (Math.random() - 0.5) * spawnRange + 10; // Keep objects generally above ground
+                const y = (Math.random() - 0.5) * spawnRange + 10;
                 const z = (Math.random() - 0.5) * spawnRange * 2;
 
                 if (objConfig.type === 'scroll') {
-                    geometry = new THREE.CylinderGeometry(0.5, 0.5, 3, 8); // Thin cylinder for scroll
+                    geometry = new THREE.CylinderGeometry(0.5, 0.5, 3, 8);
                     material = objConfig.material;
                     mesh = new THREE.Mesh(geometry, material);
-                    mesh.rotation.x = Math.PI / 2; // Lay it flat
+                    mesh.rotation.x = Math.PI / 2;
                     mesh.position.set(x, y, z);
                     mesh.castShadow = true;
                     mesh.receiveShadow = true;
                     mentalscapeScene.add(mesh);
                 } else if (objConfig.type === 'potion') {
-                    // Potion bottle (cylinder)
                     const bottleGeometry = new THREE.CylinderGeometry(0.8, 1, 3, 12);
                     const bottleMaterial = new THREE.MeshPhysicalMaterial({
                         color: objConfig.color,
@@ -402,18 +390,17 @@
                     bottleMesh.receiveShadow = true;
                     mentalscapeScene.add(bottleMesh);
 
-                    // Potion cap (small sphere on top)
                     const capGeometry = new THREE.SphereGeometry(0.7, 8, 8);
-                    const capMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 }); // Brown cap
+                    const capMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
                     const capMesh = new THREE.Mesh(capGeometry, capMaterial);
-                    capMesh.position.set(x, y + 2, z); // Position above bottle
+                    capMesh.position.set(x, y + 2, z);
                     capMesh.castShadow = true;
                     capMesh.receiveShadow = true;
                     mentalscapeScene.add(capMesh);
 
-                    mesh = bottleMesh; // Use bottleMesh for animations for consistency
+                    mesh = bottleMesh;
                 } else if (objConfig.type === 'head') {
-                    geometry = new THREE.SphereGeometry(2, 32, 32); // A simple sphere for a floating head
+                    geometry = new THREE.SphereGeometry(2, 32, 32);
                     material = new THREE.MeshStandardMaterial({
                         color: objConfig.color,
                         emissive: objConfig.emissive,
@@ -426,8 +413,22 @@
                     mesh.receiveShadow = true;
                     mentalscapeScene.add(mesh);
                 } else {
-                    // Existing general mystical shapes
                     switch (objConfig.type) {
                         case 'sphere': geometry = new THREE.SphereGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0], 16, 16); break;
                         case 'torus': geometry = new THREE.TorusGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0], Math.random() * (objConfig.size[3] - objConfig.size[2]) + objConfig.size[2], 8, 16); break;
-                        case 'cone': geometry
+                        case 'cone': geometry = new THREE.ConeGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0], Math.random() * (objConfig.size[3] - objConfig.size[2]) + objConfig.size[2], 16); break;
+                        case 'dodecahedron': geometry = new THREE.DodecahedronGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0]); break;
+                        case 'icosahedron': geometry = new THREE.IcosahedronGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0]); break;
+                        case 'torusknot': geometry = new THREE.TorusKnotGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0], Math.random() * (objConfig.size[3] - objConfig.size[2]) + objConfig.size[2], objConfig.size[4], objConfig.size[5]); break;
+                    }
+                    material = objConfig.material[Math.floor(Math.random() * objConfig.material.length)];
+                    mesh = new THREE.Mesh(geometry, material);
+                    mesh.position.set(x, y, z);
+                    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                    mesh.castShadow = true;
+                    mesh.receiveShadow = true;
+                    mentalscapeScene.add(mesh);
+                }
+
+                gsap.to(mesh.rotation, {
+       
