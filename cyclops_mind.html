@@ -3,23 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cyclops Mentalscape - Debug</title>
+    <title>Cyclops Mentalscape</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        /* IMPORTANT DEBUGGING: Bright red background to confirm HTML/CSS loading */
-        body {
-            background-color: #FF0000; /* BRIGHT RED FOR DEBUGGING */
-            font-family: 'Inter', sans-serif;
-            min-height: 100vh;
-            margin: 0;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            color: #e2e8f0; /* text-gray-200 */
-            padding: 1rem; /* p-4 */
-            overflow: hidden; /* Prevent scrollbars due to canvas sizing */
-        }
         /* Custom CSS for the canvas to ensure it fills its container */
         canvas {
             display: block;
@@ -27,12 +13,26 @@
             height: 100%;
             border-radius: 0.75rem; /* rounded-lg */
         }
+        /* Ensure the body takes full height and uses Inter font */
+        body {
+            font-family: 'Inter', sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #1a202c; /* bg-gray-900 */
+            color: #e2e8f0; /* text-gray-200 */
+            padding: 1rem; /* p-4 */
+            overflow: hidden; /* Prevent scrollbars due to canvas sizing */
+        }
         /* Container for the canvas to give it a defined aspect ratio on larger screens */
         .canvas-container {
             width: 100%;
             max-width: 960px; /* md:max-w-3xl, lg:max-w-4xl */
             aspect-ratio: 16 / 9; /* Maintain a widescreen aspect ratio */
-            background-color: #2d3748; /* bg-gray-800 - should be visible if canvas fails */
+            background-color: #2d3748; /* bg-gray-800 */
             border-radius: 0.75rem; /* rounded-lg */
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-xl */
             margin-bottom: 1rem; /* mb-4 */
@@ -86,49 +86,9 @@
             cursor: not-allowed;
             box-shadow: none;
         }
-        /* Message box for audio issues */
-        .message-box-container {
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            background-color: rgba(0, 0, 0, 0.8);
-            padding: 1.5rem;
-            border-radius: 0.75rem;
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
-            z-index: 100;
-            text-align: center;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 0.3s ease-in-out;
-        }
-        .message-box-container.show {
-            opacity: 1;
-            pointer-events: auto;
-        }
-        /* Styling for the "Poke Me Adlay" text overlay */
-        #pokeOrbTextOverlay {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            color: #fff;
-            font-size: 1.8rem; /* text-2xl */
-            font-weight: bold;
-            text-shadow: 0 0 8px #00ffff, 0 0 15px #00ffff; /* Glowing effect */
-            z-index: 11; /* Above void scene, below intro overlay */
-            cursor: pointer;
-            opacity: 0;
-            pointer-events: none;
-            transition: opacity 1s ease-in-out;
-        }
-        #pokeOrbTextOverlay.visible {
-            opacity: 1;
-            pointer-events: auto;
-        }
     </style>
 </head>
-<body class="bg-red-500 text-gray-200 flex flex-col items-center justify-center p-4">
+<body class="bg-gray-900 text-gray-200 flex flex-col items-center justify-center p-4">
 
     <h1 class="text-3xl md:text-4xl font-bold mb-6 text-center">The Mind of the Cyclops</h1>
 
@@ -142,13 +102,9 @@
                 Enter the Mind
             </button>
         </div>
-
-        <div id="pokeOrbTextOverlay">
-            Poke Me Adlay
-        </div>
     </div>
 
-    <audio id="backgroundAudio" loop preload="auto">
+    <audio id="backgroundAudio" loop>
         <source src="https://wolfgangthenecromancer.github.io/Psyclops-Mental/mentalscape_audio.mp3" type="audio/mpeg">
         Your browser does not support the audio element.
     </audio>
@@ -158,15 +114,12 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
 
     <script>
-        // Add this at the very top of the script block to see if the script even starts
-        console.log("Script block started.");
-
         // Global variables for Three.js scenes, camera, renderer, and controls
         let renderer, camera, controls;
-        let cyclopsScene, voidScene, mentalscapeScene;
+        let cyclopsScene, mentalscapeScene;
         let activeScene; // To switch between scenes
-        let cyclopsEyeMesh, pokeOrbMesh; // Reference to the eye mesh and void orb
-        let introOverlay, enterButton, pokeOrbTextOverlay;
+        let cyclopsEyeMesh; // Reference to the eye mesh for interaction
+        let introOverlay, enterButton;
         let backgroundAudio;
 
         const CANVAS_ID = 'mentalscapeCanvas';
@@ -175,55 +128,53 @@
          * Initializes the Three.js renderer and common elements.
          */
         function initRenderer() {
-            console.log("initRenderer: Attempting to initialize renderer.");
             const canvas = document.getElementById(CANVAS_ID);
-            if (!canvas) {
-                console.error("initRenderer: Canvas element not found!");
-                showMessageBox("Critical Error: Canvas element missing. Cannot render 3D scene.");
-                throw new Error("Canvas not found"); // Halt execution
-            }
             renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true });
             renderer.setSize(canvas.clientWidth, canvas.clientHeight);
             renderer.setPixelRatio(window.devicePixelRatio);
-            renderer.shadowMap.enabled = true;
-            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-            console.log("initRenderer: Renderer initialized successfully.");
+            renderer.shadowMap.enabled = true; // Enable shadows for more realism
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Softer shadows
         }
 
         /**
          * Creates and sets up the Cyclops Eye intro scene.
          */
         function createCyclopsScene() {
-            console.log("createCyclopsScene: Creating cyclops scene.");
             cyclopsScene = new THREE.Scene();
-            cyclopsScene.background = new THREE.Color(0x000000);
+            cyclopsScene.background = new THREE.Color(0x000000); // Dark background for contrast
 
+            // Camera for the cyclops scene
             camera = new THREE.PerspectiveCamera(
                 75,
                 document.getElementById(CANVAS_ID).clientWidth / document.getElementById(CANVAS_ID).clientHeight,
                 0.1,
                 1000
             );
-            camera.position.set(0, 0, 10);
+            camera.position.set(0, 0, 10); // Position to view the cyclops head
 
+            // Ambient light for general illumination
             const ambientLight = new THREE.AmbientLight(0x404040, 3);
             cyclopsScene.add(ambientLight);
 
+            // Point light to highlight the eye
             const pointLight = new THREE.PointLight(0xffffff, 2, 50);
             pointLight.position.set(0, 0, 5);
             pointLight.castShadow = true;
             cyclopsScene.add(pointLight);
 
+            // Cyclops Head (large sphere)
             const headGeometry = new THREE.SphereGeometry(5, 32, 32);
-            const headMaterial = new THREE.MeshStandardMaterial({ color: 0x4B0082, roughness: 0.7, metalness: 0.1 });
+            const headMaterial = new THREE.MeshStandardMaterial({ color: 0x4B0082, roughness: 0.7, metalness: 0.1 }); // Indigo
             const headMesh = new THREE.Mesh(headGeometry, headMaterial);
             headMesh.receiveShadow = true;
             cyclopsScene.add(headMesh);
 
+            // Cyclops Eye (smaller, glowing sphere)
             const eyeGeometry = new THREE.SphereGeometry(1.5, 32, 32);
+            // Ethereal, glowing eye material
             const eyeMaterial = new THREE.MeshStandardMaterial({
-                color: 0x00FFFF,
-                emissive: 0x00FFFF,
+                color: 0x00FFFF, // Cyan
+                emissive: 0x00FFFF, // Emits light
                 emissiveIntensity: 1.5,
                 roughness: 0.1,
                 metalness: 0.9,
@@ -231,10 +182,11 @@
                 opacity: 0.8
             });
             cyclopsEyeMesh = new THREE.Mesh(eyeGeometry, eyeMaterial);
-            cyclopsEyeMesh.position.set(0, 0, 4.5);
+            cyclopsEyeMesh.position.set(0, 0, 4.5); // Position slightly forward from the head
             cyclopsEyeMesh.castShadow = true;
             cyclopsScene.add(cyclopsEyeMesh);
 
+            // Add a subtle rotation animation to the eye
             gsap.to(cyclopsEyeMesh.rotation, {
                 y: Math.PI * 2,
                 duration: 20,
@@ -242,80 +194,41 @@
                 ease: "none"
             });
 
+            // Set the active scene to the cyclops scene initially
             activeScene = cyclopsScene;
-            console.log("createCyclopsScene: Cyclops scene created successfully, activeScene set.");
         }
 
         /**
-         * Creates and sets up the dark void scene with the "Poke Me Adlay" orb.
-         */
-        function createVoidScene() {
-            console.log("createVoidScene: Creating void scene.");
-            voidScene = new THREE.Scene();
-            voidScene.background = new THREE.Color(0x000000);
-
-            const ambientLight = new THREE.AmbientLight(0x404040, 1);
-            voidScene.add(ambientLight);
-
-            const orbGeometry = new THREE.SphereGeometry(3, 32, 32);
-            const orbMaterial = new THREE.MeshStandardMaterial({
-                color: 0xFF00FF,
-                emissive: 0xFF00FF,
-                emissiveIntensity: 1.2,
-                roughness: 0.1,
-                metalness: 0.9,
-                transparent: true,
-                opacity: 0.7
-            });
-            pokeOrbMesh = new THREE.Mesh(orbGeometry, orbMaterial);
-            pokeOrbMesh.position.set(0, 0, 0);
-            voidScene.add(pokeOrbMesh);
-
-            gsap.to(pokeOrbMesh.rotation, {
-                y: Math.PI * 2,
-                duration: 15,
-                repeat: -1,
-                ease: "none"
-            });
-            gsap.to(pokeOrbMesh.position, {
-                y: 0.5,
-                duration: 3,
-                yoyo: true,
-                repeat: -1,
-                ease: "sine.inOut"
-            });
-            console.log("createVoidScene: Void scene created successfully.");
-        }
-
-        /**
-         * Creates and sets up the Mentalscape scene (expanded version).
+         * Creates and sets up the Mentalscape scene.
          */
         function createMentalscapeScene() {
-            console.log("createMentalscapeScene: Creating mentalscape scene.");
             mentalscapeScene = new THREE.Scene();
-            mentalscapeScene.background = new THREE.Color(0x0a0a2a);
+            mentalscapeScene.background = new THREE.Color(0x0a0a2a); // Deep blue/purple background
 
+            // Ambient light for overall mystical glow
             const ambientLight = new THREE.AmbientLight(0x404040, 1);
             mentalscapeScene.add(ambientLight);
 
-            const light1 = new THREE.PointLight(0xff00ff, 2, 200);
-            light1.position.set(50, 20, 50);
+            // Multiple colored point lights for ethereal effects
+            const light1 = new THREE.PointLight(0xff00ff, 2, 100); // Magenta
+            light1.position.set(20, 10, 20);
             light1.castShadow = true;
             mentalscapeScene.add(light1);
 
-            const light2 = new THREE.PointLight(0x00ffff, 2, 200);
-            light2.position.set(-50, 30, -50);
+            const light2 = new THREE.PointLight(0x00ffff, 2, 100); // Cyan
+            light2.position.set(-20, 15, -20);
             light2.castShadow = true;
             mentalscapeScene.add(light2);
 
-            const light3 = new THREE.PointLight(0xffff00, 1.5, 200);
-            light3.position.set(0, -20, 80);
+            const light3 = new THREE.PointLight(0xffff00, 1.5, 100); // Yellow
+            light3.position.set(0, -10, 30);
             light3.castShadow = true;
             mentalscapeScene.add(light3);
 
-            const groundGeometry = new THREE.PlaneGeometry(200, 200);
+            // Ground/Floor (abstract, perhaps reflective)
+            const groundGeometry = new THREE.PlaneGeometry(100, 100);
             const groundMaterial = new THREE.MeshStandardMaterial({
-                color: 0x1a0033,
+                color: 0x1a0033, // Dark purplish
                 roughness: 0.2,
                 metalness: 0.8,
                 transparent: true,
@@ -323,112 +236,187 @@
             });
             const ground = new THREE.Mesh(groundGeometry, groundMaterial);
             ground.rotation.x = -Math.PI / 2;
-            ground.position.y = -20;
+            ground.position.y = -10;
             ground.receiveShadow = true;
             mentalscapeScene.add(ground);
 
-            const etherealMaterials = [
-                new THREE.MeshPhysicalMaterial({ color: 0x8A2BE2, transparent: true, opacity: 0.6, roughness: 0.1, metalness: 0.5, reflectivity: 0.9, clearcoat: 1 }),
-                new THREE.MeshStandardMaterial({ color: 0x00FF00, emissive: 0x00FF00, emissiveIntensity: 0.8, roughness: 0.3 }),
-                new THREE.MeshStandardMaterial({ color: 0xFFD700, roughness: 0.2, metalness: 0.9 }),
-                new THREE.MeshPhysicalMaterial({ color: 0xFF69B4, transparent: true, opacity: 0.7, roughness: 0.3, metalness: 0.2 }),
-                new THREE.MeshStandardMaterial({ color: 0x4682B4, roughness: 0.6, metalness: 0.3 })
+            // Ethereal and Magical Objects
+            const materials = [
+                new THREE.MeshPhysicalMaterial({ color: 0x8A2BE2, transparent: true, opacity: 0.6, roughness: 0.1, metalness: 0.5, reflectivity: 0.9, clearcoat: 1 }), // BlueViolet
+                new THREE.MeshStandardMaterial({ color: 0x00FF00, emissive: 0x00FF00, emissiveIntensity: 0.8, roughness: 0.3 }), // Glowing Green
+                new THREE.MeshStandardMaterial({ color: 0xFFD700, roughness: 0.2, metalness: 0.9 }), // Gold
+                new THREE.MeshPhysicalMaterial({ color: 0xFF69B4, transparent: true, opacity: 0.7, roughness: 0.3, metalness: 0.2 }), // HotPink
+                new THREE.MeshStandardMaterial({ color: 0x4682B4, roughness: 0.6, metalness: 0.3 }) // SteelBlue
             ];
 
-            const objectTypes = [
-                { type: 'sphere', size: [1, 5], material: etherealMaterials },
-                { type: 'torus', size: [1, 4, 0.2, 1], material: etherealMaterials },
-                { type: 'cone', size: [1, 5, 1, 5], material: etherealMaterials },
-                { type: 'dodecahedron', size: [1, 4], material: etherealMaterials },
-                { type: 'icosahedron', size: [1, 4], material: etherealMaterials },
-                { type: 'torusknot', size: [1, 3, 100, 16], material: etherealMaterials },
-                { type: 'scroll', material: new THREE.MeshStandardMaterial({ color: 0xF5DEB3, roughness: 0.8, metalness: 0.1 }) },
-                { type: 'scroll', material: new THREE.MeshStandardMaterial({ color: 0xD2B48C, roughness: 0.8, metalness: 0.1 }) },
-                { type: 'potion', color: 0x00CED1, emissive: 0x008B8B, emissiveIntensity: 0.5 },
-                { type: 'potion', color: 0x8B008B, emissive: 0x4B0082, emissiveIntensity: 0.5 },
-                { type: 'potion', color: 0xDAA520, emissive: 0xB8860B, emissiveIntensity: 0.5 },
-                { type: 'head', color: 0x800000, emissive: 0xFF0000, emissiveIntensity: 0.3 },
-                { type: 'head', color: 0x008000, emissive: 0x00FF00, emissiveIntensity: 0.3 },
-                { type: 'head', color: 0x483D8B, emissive: 0x6A5ACD, emissiveIntensity: 0.3 }
-            ];
-
-            const spawnRange = 150;
-
-            function addMagicalObject() {
-                const objConfig = objectTypes[Math.floor(Math.random() * objectTypes.length)];
+            // Function to create a random magical object
+            function createMagicalObject(x, y, z) {
                 let geometry;
-                let material;
-                let mesh;
-
-                const x = (Math.random() - 0.5) * spawnRange * 2;
-                const y = (Math.random() - 0.5) * spawnRange + 10;
-                const z = (Math.random() - 0.5) * spawnRange * 2;
-
-                if (objConfig.type === 'scroll') {
-                    geometry = new THREE.CylinderGeometry(0.5, 0.5, 3, 8);
-                    material = objConfig.material;
-                    mesh = new THREE.Mesh(geometry, material);
-                    mesh.rotation.x = Math.PI / 2;
-                    mesh.position.set(x, y, z);
-                    mesh.castShadow = true;
-                    mesh.receiveShadow = true;
-                    mentalscapeScene.add(mesh);
-                } else if (objConfig.type === 'potion') {
-                    const bottleGeometry = new THREE.CylinderGeometry(0.8, 1, 3, 12);
-                    const bottleMaterial = new THREE.MeshPhysicalMaterial({
-                        color: objConfig.color,
-                        emissive: objConfig.emissive,
-                        emissiveIntensity: objConfig.emissiveIntensity,
-                        transparent: true,
-                        opacity: 0.7,
-                        roughness: 0.1,
-                        metalness: 0.2
-                    });
-                    const bottleMesh = new THREE.Mesh(bottleGeometry, bottleMaterial);
-                    bottleMesh.position.set(x, y, z);
-                    bottleMesh.castShadow = true;
-                    bottleMesh.receiveShadow = true;
-                    mentalscapeScene.add(bottleMesh);
-
-                    const capGeometry = new THREE.SphereGeometry(0.7, 8, 8);
-                    const capMaterial = new THREE.MeshStandardMaterial({ color: 0x8B4513 });
-                    const capMesh = new THREE.Mesh(capGeometry, capMaterial);
-                    capMesh.position.set(x, y + 2, z);
-                    capMesh.castShadow = true;
-                    capMesh.receiveShadow = true;
-                    mentalscapeScene.add(capMesh);
-
-                    mesh = bottleMesh;
-                } else if (objConfig.type === 'head') {
-                    geometry = new THREE.SphereGeometry(2, 32, 32);
-                    material = new THREE.MeshStandardMaterial({
-                        color: objConfig.color,
-                        emissive: objConfig.emissive,
-                        emissiveIntensity: objConfig.emissiveIntensity,
-                        roughness: 0.5
-                    });
-                    mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.set(x, y, z);
-                    mesh.castShadow = true;
-                    mesh.receiveShadow = true;
-                    mentalscapeScene.add(mesh);
-                } else {
-                    switch (objConfig.type) {
-                        case 'sphere': geometry = new THREE.SphereGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0], 16, 16); break;
-                        case 'torus': geometry = new THREE.TorusGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0], Math.random() * (objConfig.size[3] - objConfig.size[2]) + objConfig.size[2], 8, 16); break;
-                        case 'cone': geometry = new THREE.ConeGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0], Math.random() * (objConfig.size[3] - objConfig.size[2]) + objConfig.size[2], 16); break;
-                        case 'dodecahedron': geometry = new THREE.DodecahedronGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0]); break;
-                        case 'icosahedron': geometry = new THREE.IcosahedronGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0]); break;
-                        case 'torusknot': geometry = new THREE.TorusKnotGeometry(Math.random() * (objConfig.size[1] - objConfig.size[0]) + objConfig.size[0], Math.random() * (objConfig.size[3] - objConfig.size[2]) + objConfig.size[2], objConfig.size[4], objConfig.size[5]); break;
-                    }
-                    material = objConfig.material[Math.floor(Math.random() * objConfig.material.length)];
-                    mesh = new THREE.Mesh(geometry, material);
-                    mesh.position.set(x, y, z);
-                    mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
-                    mesh.castShadow = true;
-                    mesh.receiveShadow = true;
-                    mentalscapeScene.add(mesh);
+                const type = Math.floor(Math.random() * 5); // 5 types of shapes
+                switch (type) {
+                    case 0: geometry = new THREE.SphereGeometry(Math.random() * 3 + 1, 16, 16); break;
+                    case 1: geometry = new THREE.TorusGeometry(Math.random() * 2 + 1, Math.random() * 0.5 + 0.2, 8, 16); break;
+                    case 2: geometry = new THREE.ConeGeometry(Math.random() * 2 + 1, Math.random() * 4 + 2, 16); break;
+                    case 3: geometry = new THREE.CylinderGeometry(Math.random() * 1.5 + 0.5, Math.random() * 1.5 + 0.5, Math.random() * 5 + 2, 16); break;
+                    case 4: geometry = new THREE.DodecahedronGeometry(Math.random() * 2 + 1); break;
                 }
+                const material = materials[Math.floor(Math.random() * materials.length)];
+                const mesh = new THREE.Mesh(geometry, material);
+                mesh.position.set(x, y, z);
+                mesh.rotation.set(Math.random() * Math.PI, Math.random() * Math.PI, Math.random() * Math.PI);
+                mesh.castShadow = true;
+                mesh.receiveShadow = true;
+                mentalscapeScene.add(mesh);
 
+                // Animate rotation for ethereal feel
                 gsap.to(mesh.rotation, {
-       
+                    x: `+=${Math.PI * 2}`,
+                    y: `+=${Math.PI * 2}`,
+                    duration: Math.random() * 30 + 10,
+                    repeat: -1,
+                    ease: "none"
+                });
+                gsap.to(mesh.position, {
+                    y: mesh.position.y + (Math.random() * 5 - 2.5), // Float up and down
+                    duration: Math.random() * 5 + 3,
+                    yoyo: true,
+                    repeat: -1,
+                    ease: "sine.inOut"
+                });
+            }
+
+            // Populate the mentalscape with objects
+            for (let i = 0; i < 50; i++) {
+                const x = (Math.random() - 0.5) * 80;
+                const y = (Math.random() - 0.5) * 40;
+                const z = (Math.random() - 0.5) * 80;
+                createMagicalObject(x, y, z);
+            }
+        }
+
+        /**
+         * Handles window resizing to update camera aspect ratio and renderer size.
+         */
+        function onWindowResize() {
+            const canvas = document.getElementById(CANVAS_ID);
+            camera.aspect = canvas.clientWidth / canvas.clientHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(canvas.clientWidth, canvas.clientHeight);
+        }
+
+        /**
+         * Animation loop: Renders the active scene repeatedly.
+         */
+        function animate() {
+            requestAnimationFrame(animate); // Request the next frame
+            if (controls) { // Only update controls if they are initialized
+                controls.update(); // Required for damping
+            }
+            renderer.render(activeScene, camera); // Render the active scene
+        }
+
+        /**
+         * Initiates the transition from the cyclops eye into the mentalscape.
+         */
+        function enterMentalscape() {
+            // Disable button to prevent rapid clicks
+            enterButton.disabled = true;
+            enterButton.textContent = 'Entering...';
+
+            // Start audio playback
+            backgroundAudio.play()
+                .then(() => {
+                    console.log("Audio started playing.");
+                })
+                .catch(error => {
+                    console.error("Error playing audio:", error);
+                    showMessageBox("Audio playback failed. Please ensure your browser allows autoplay or try again.");
+                });
+
+            // Animate camera moving into the eye
+            gsap.to(camera.position, {
+                x: 0,
+                y: 0,
+                z: 0.1, // Move very close to the center of the eye
+                duration: 3,
+                ease: "power2.inOut",
+                onComplete: () => {
+                    // Once inside the eye, switch to the mentalscape scene
+                    activeScene = mentalscapeScene;
+
+                    // Re-initialize camera for the mentalscape (could be a new camera or reset existing)
+                    camera.position.set(0, 0, 30); // Starting position inside the mentalscape
+                    camera.lookAt(0, 0, 0); // Look at the center of the mentalscape
+
+                    // Initialize OrbitControls for mentalscape navigation
+                    controls = new THREE.OrbitControls(camera, renderer.domElement);
+                    controls.enableDamping = true;
+                    controls.dampingFactor = 0.05;
+                    controls.screenSpacePanning = false;
+                    controls.maxPolarAngle = Math.PI * 0.9; // Allow looking around freely
+
+                    // Hide the intro overlay with a fade
+                    introOverlay.classList.add('hidden');
+                }
+            });
+        }
+
+        /**
+         * Displays a custom message box to the user.
+         * @param {string} message - The message to display.
+         */
+        function showMessageBox(message) {
+            const messageBox = document.createElement('div');
+            messageBox.className = 'fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50';
+            messageBox.innerHTML = `
+                <div class="bg-gray-800 p-6 rounded-lg shadow-lg text-center max-w-sm mx-auto">
+                    <p class="text-lg mb-4">${message}</p>
+                    <button class="control-button" onclick="this.parentNode.parentNode.remove()">OK</button>
+                </div>
+            `;
+            document.body.appendChild(messageBox);
+        }
+
+        // Initialize everything when the window loads
+        window.onload = function () {
+            initRenderer();
+            createCyclopsScene(); // Start with the cyclops scene
+            createMentalscapeScene(); // Prepare the mentalscape scene in the background
+
+            introOverlay = document.getElementById('introOverlay');
+            enterButton = document.getElementById('enterButton');
+            backgroundAudio = document.getElementById('backgroundAudio');
+
+            // Add click listener to the button to trigger entry
+            enterButton.addEventListener('click', enterMentalscape);
+
+            // Add a click listener to the eye mesh itself for more direct interaction
+            // This requires a raycaster to detect clicks on 3D objects
+            const raycaster = new THREE.Raycaster();
+            const mouse = new THREE.Vector2();
+
+            function onEyeClick(event) {
+                // Calculate mouse position in normalized device coordinates (-1 to +1)
+                const canvas = renderer.domElement;
+                mouse.x = (event.clientX / canvas.clientWidth) * 2 - 1;
+                mouse.y = -(event.clientY / canvas.clientHeight) * 2 + 1;
+
+                // Update the raycaster with the camera and mouse position
+                raycaster.setFromCamera(mouse, camera);
+
+                // Check for intersections with the cyclops eye mesh
+                const intersects = raycaster.intersectObjects([cyclopsEyeMesh]);
+
+                if (intersects.length > 0 && activeScene === cyclopsScene) {
+                    // If the eye is clicked and we are in the cyclops scene
+                    enterMentalscape();
+                }
+            }
+            renderer.domElement.addEventListener('click', onEyeClick, false);
+
+            // Start the animation loop
+            animate();
+        };
+    </script>
+</body>
+</html>
